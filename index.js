@@ -1,6 +1,7 @@
 
 require("dotenv").config();
 const { SerialPort } = require('serialport');
+const { ByteLengthParser } = require('@serialport/parser-byte-length')
 const { InfluxDB, Point } = require('@influxdata/influxdb-client')
 
 const org = process.env.ORG
@@ -15,40 +16,39 @@ const serialPort = new SerialPort({
     stopBits: 1,
     parity: 'none',
 });
+const parser = serialPort.pipe(new ByteLengthParser({ length: 7 }))
 
 function comm() {
     serialPort.on('open', function () {
         console.log("open!")
-        // console.log(process.env.INFLUXDB_TOKEN);
+    });
+    
+    serialPort.on('close', function () {
+        console.log("close!")
     });
 
     serialPort.on('error', function (err) {
         console.log('Error: ', err.message);
     })
 
-    serialPort.on('readable', function () {
-
-        const data = [...serialPort.read()]
+    parser.on('data', function (raw) {
+        // console.log(raw)
+        const data = [...raw]
+        // console.log(data)
 
         if (data != null) {
-            if (data.length == 7
-                && String(data[0]).startsWith('2')
-                && String(data[6]).endsWith('3')
-            ) {
-                const vib1 = parseInt(data[1]).toString(16)
-                const vib2 = parseInt(data[2]).toString(16)
-                const vib = parseInt(String(vib1) + String(vib2), 16)
-                const temperature1 = parseInt(data[3]).toString(16)
-                const temperature2 = parseInt(data[4]).toString(16)
-                const temperature = parseInt(String(temperature1) + String(temperature2), 16) / 100
-                // console.log('data', data)
-                console.log('vib', vib)
-                console.log('temp', temperature)
-                writeDb(vib, temperature)
-            }
+            const vib1 = parseInt(data[1]).toString(16)
+            const vib2 = parseInt(data[2]).toString(16)
+            const vib = parseInt(String(vib1) + String(vib2), 16)
+            const temperature1 = parseInt(data[3]).toString(16)
+            const temperature2 = parseInt(data[4]).toString(16)
+            const temperature = parseInt(String(temperature1) + String(temperature2), 16) / 100
+            // console.log('data', data)
+            console.log('vib', vib, 'temp', temperature)
+            writeDb(vib, temperature)
         }
+    })
 
-    });
 }
 
 
