@@ -37,15 +37,16 @@ function comm() {
         // console.log(data)
 
         if (data != null) {
-            const vib1 = parseInt(data[1]).toString(16)
-            const vib2 = parseInt(data[2]).toString(16)
+            const vib1 = parseInt(data[1]).toString(16).padStart(2,'0')
+            const vib2 = parseInt(data[2]).toString(16).padStart(2,'0')
             const vib = parseInt(String(vib1) + String(vib2), 16)
-            const temperature1 = parseInt(data[3]).toString(16)
-            const temperature2 = parseInt(data[4]).toString(16)
+            const temperature1 = parseInt(data[3]).toString(16).padStart(2,'0')
+            const temperature2 = parseInt(data[4]).toString(16).padStart(2,'0')
             const temperature = parseInt(String(temperature1) + String(temperature2), 16) / 100
-            // console.log('data', data)
-            console.log('vib', vib, 'temp', temperature)
-            writeDb(vib, temperature)
+            const sum = parseInt(data[1]) + parseInt(data[2]) + parseInt(data[3]) + parseInt(data[4])
+            const cs = (sum & 0xff) == parseInt(data[5])
+            console.log('vib', vib, 'temp', temperature, 'cs', cs)
+            writeDb(vib, temperature, cs)
         }
     })
 
@@ -53,7 +54,7 @@ function comm() {
 
 
 
-function writeDb(vib, temperature) {
+function writeDb(vib, temperature, cs) {
 
     const writeClient = client.getWriteApi(org, bucket)
     const point1 = new Point('vib')
@@ -62,9 +63,12 @@ function writeDb(vib, temperature) {
     const point2 = new Point('temperature')
         .tag('sensor_id', 'TB-485-H08')
         .floatField('value', temperature)
+    // const point3 = new Point('checksum')
+    //     .booleanField('value', cs)
 
     writeClient.writePoints([
-        point1, point2
+        point1, point2, 
+        // point3
     ])
 
     writeClient.close().then(() => {
